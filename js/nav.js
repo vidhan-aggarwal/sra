@@ -11,7 +11,10 @@ function renderNav() {
 
   header.innerHTML = `
     <nav class="nav-inner">
-      <a href="index.html" class="logo">SRA</a>
+      <a href="index.html" class="logo" aria-label="SRA home">
+        <img src="assets/brand/logo-mark-128.png" alt="" class="logo-mark" width="36" height="36" />
+        <span class="logo-word">SRA</span>
+      </a>
       <ul class="nav-links">
         <li>
           <a href="index.html" class="nav-link${current === "home" ? " active" : ""}" data-nav="home">Home</a>
@@ -51,10 +54,18 @@ function renderFooter() {
 
   footer.innerHTML = `
     <div class="footer-inner">
-      <span class="footer-logo">SRA Pilates &amp; Fitness</span>
+      <a href="index.html" class="footer-brand" aria-label="SRA Pilates Fitness Rehab">
+        <img
+          src="assets/brand/logo-full-320.png"
+          alt="SRA Pilates · Fitness Rehab"
+          class="footer-logo-img"
+          width="120"
+          height="176"
+        />
+      </a>
       <div class="footer-locations">
         <span>Chembur</span>
-        <span class="dot">·</span>
+        <span class="dot">•</span>
         <span>Bandra</span>
       </div>
       <div class="footer-social">
@@ -74,6 +85,7 @@ function renderFooter() {
 function initHeaderScroll() {
   const header = document.getElementById("site-header");
   const hero = document.querySelector(".hero");
+  const intro = document.querySelector(".intro-track") || document.querySelector(".intro-splash");
 
   if (!header) return;
 
@@ -83,7 +95,9 @@ function initHeaderScroll() {
   }
 
   const onScroll = () => {
-    header.classList.toggle("scrolled", window.scrollY > hero.offsetHeight * 0.15);
+    const heroTop = intro ? intro.offsetHeight : 0;
+    const threshold = heroTop + hero.offsetHeight * 0.15;
+    header.classList.toggle("scrolled", window.scrollY > threshold);
   };
 
   window.addEventListener("scroll", onScroll, { passive: true });

@@ -1,9 +1,136 @@
 document.addEventListener("DOMContentLoaded", () => {
+  initIntroSplash();
   initHero();
   initSphereRing();
   initScrollAnimations();
   initQuadrantHover();
 });
+
+function initIntroSplash() {
+  const track = document.querySelector(".intro-track");
+  const intro = document.querySelector(".intro-splash");
+  const stage = document.querySelector(".intro-splash-stage");
+  const logo = document.querySelector(".intro-logo");
+  const cue = document.querySelector(".intro-scroll-cue");
+  const home = document.querySelector("#home") || document.querySelector(".hero");
+  if (!track || !intro || !logo || !home) return;
+
+  document.body.classList.add("has-intro");
+  requestAnimationFrame(() => intro.classList.add("is-ready"));
+
+  // Stay ≤ native size while fully visible; blow past via stage after fade starts
+  const LOGO_START_SCALE = 0.32;
+  const LOGO_END_SCALE = 1;
+
+  const clamp = (v, min = 0, max = 1) => Math.min(max, Math.max(min, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+  const easeInOutCubic = (t) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const smoothstep = (edge0, edge1, x) => {
+    const t = clamp((x - edge0) / (edge1 - edge0));
+    return t * t * (3 - 2 * t);
+  };
+
+  let rafId = 0;
+  let lastApplied = -1;
+
+  function getProgress() {
+    const rect = track.getBoundingClientRect();
+    const scrollable = track.offsetHeight - window.innerHeight;
+    if (scrollable <= 0) return 1;
+    return clamp(-rect.top / scrollable);
+  }
+
+  function applyProgress(progress) {
+    if (Math.abs(progress - lastApplied) < 0.00035) return;
+    lastApplied = progress;
+
+    // Zoom immediately; push far enough that the mark leaves the frame
+    const zoomT = easeOutCubic(smoothstep(0, 0.88, progress));
+    const fadeT = smoothstep(0.52, 0.78, progress);
+    const softBlur = smoothstep(0.55, 0.82, progress) * 10;
+    const revealT = smoothstep(0.72, 0.98, progress);
+    const cueT = 1 - smoothstep(0, 0.08, progress);
+
+    const logoScale = lerp(LOGO_START_SCALE, LOGO_END_SCALE, zoomT);
+    const logoOpacity = 1 - fadeT;
+    const splashOpacity = 1 - revealT;
+    const heroScale = lerp(1.18, 1, easeOutCubic(revealT));
+
+    logo.style.transform = `translate3d(0,0,0) scale(${logoScale})`;
+    logo.style.opacity = String(logoOpacity);
+    logo.style.filter = softBlur > 0.2 ? `blur(${softBlur}px)` : "none";
+
+    if (stage) {
+      // Blow through until only black remains, then peel into home
+      const stageZoom = easeInOutCubic(smoothstep(0.4, 0.95, progress));
+      const stageScale = lerp(1, 6.5, stageZoom);
+      stage.style.transform = `translate3d(0,0,0) scale(${stageScale})`;
+      stage.style.opacity = String(1 - revealT);
+    }
+
+    intro.style.opacity = String(splashOpacity);
+    intro.style.backgroundColor = `rgba(0, 0, 0, ${Math.max(splashOpacity, 0)})`;
+
+    if (progress < 0.97) {
+      home.style.transform = `translate3d(0,0,0) scale(${heroScale})`;
+    } else {
+      home.style.transform = "";
+    }
+
+    if (cue) {
+      const readyBoost = intro.classList.contains("is-ready") ? 1 : 0;
+      cue.style.opacity = String(cueT * readyBoost);
+      cue.style.pointerEvents = cueT > 0.25 ? "auto" : "none";
+    }
+
+    const passed = progress >= 0.93;
+    document.body.classList.toggle("intro-passed", passed);
+
+    if (passed) {
+      home.style.transform = "";
+      intro.style.opacity = "0";
+      logo.style.opacity = "0";
+    }
+  }
+
+  function onScroll() {
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => applyProgress(getProgress()));
+  }
+
+  function slowScrollThroughIntro(duration = 4200) {
+    const startY = window.scrollY;
+    const targetY = track.offsetTop + track.offsetHeight - window.innerHeight;
+    const distance = targetY - startY;
+    if (distance <= 1) return;
+
+    const startTime = performance.now();
+
+    function frame(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      window.scrollTo(0, startY + distance * easeInOutCubic(t));
+      if (t < 1) requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  cue?.addEventListener("click", (e) => {
+    e.preventDefault();
+    slowScrollThroughIntro(4500);
+  });
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll, { passive: true });
+  onScroll();
+
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+  window.scrollTo(0, 0);
+}
 
 function initHero() {
   const hero = document.querySelector(".hero");
