@@ -456,6 +456,7 @@ body.inner-page .nav-links {
   opacity: 0;
   transform: scale(0.92);
   transition: opacity 1s var(--ease-out) 0.2s, transform 1s var(--ease-out) 0.2s;
+  overflow: visible;
 }
 
 .sphere-container.visible {
@@ -467,35 +468,36 @@ body.inner-page .nav-links {
   position: relative;
   width: clamp(260px, 38vw, 400px);
   height: clamp(260px, 38vw, 400px);
+  overflow: visible;
 }
 
 .sphere-ring svg {
   width: 100%;
   height: 100%;
   display: block;
+  overflow: visible;
   filter: drop-shadow(0 8px 32px rgba(61, 52, 44, 0.1));
 }
 
 .sphere-ring .quadrant-group {
-  cursor: pointer;
   transition: opacity 0.35s;
 }
 
-.sphere-ring .quadrant-group:hover {
-  opacity: 0.88;
+.sphere-ring .quadrant-group.is-hovered {
+  opacity: 1;
 }
 
 .sphere-ring .quadrant-group.dimmed {
   opacity: 0.45;
 }
 
-.sphere-ring image {
-  transform-origin: 50% 50%;
-  transition: transform 0.45s var(--ease-out);
+.sphere-ring .quadrant-hit {
+  cursor: pointer;
+  pointer-events: all;
 }
 
-.sphere-ring .quadrant-group:hover image {
-  transform: translate(var(--open-x), var(--open-y)) scale(1.03);
+.sphere-ring .quadrant-visual {
+  pointer-events: none;
 }
 
 .sphere-center {
