@@ -95,45 +95,77 @@ function easeOutQuart(t) {
   return 1 - Math.pow(1 - t, 4);
 }
 
+function getScrollParentY() {
+  return document.scrollingElement || document.documentElement;
+}
+
+function setNativeScrollTop(y) {
+  const top = Math.max(0, y);
+  const root = getScrollParentY();
+  // Override CSS scroll-behavior: smooth (breaks instant chase on Safari/GitHub Pages)
+  const prev = root.style.scrollBehavior;
+  root.style.scrollBehavior = "auto";
+  root.scrollTop = top;
+  window.scrollTo(0, top);
+  root.style.scrollBehavior = prev;
+}
+
+function waitForItemImages(item) {
+  const images = [...item.querySelectorAll("img")];
+  if (!images.length) return Promise.resolve();
+
+  return Promise.all(
+    images.map(
+      (img) =>
+        new Promise((resolve) => {
+          if (img.complete && img.naturalHeight > 0) {
+            resolve();
+            return;
+          }
+          const done = () => resolve();
+          img.addEventListener("load", done, { once: true });
+          img.addEventListener("error", done, { once: true });
+          // Decode if possible so layout height is final
+          if (typeof img.decode === "function") {
+            img.decode().then(done).catch(done);
+          }
+        })
+    )
+  );
+}
+
 function scrollToFitExpandedItem(item) {
   const headerEl = document.getElementById("site-header");
   const headerHeight = headerEl?.offsetHeight || 64;
   const padding = 20;
   const isMobile = window.matchMedia("(max-width: 900px)").matches;
-  const duration = isMobile ? 300 : 380;
-  const body = item.querySelector(".machine-body");
+  const duration = isMobile ? 320 : 400;
 
   let rafId = 0;
   let finished = false;
 
   function getTargetScroll() {
     const rect = item.getBoundingClientRect();
-    const pageTop = window.scrollY + rect.top;
+    const pageTop = (window.scrollY || window.pageYOffset || 0) + rect.top;
     const pageBottom = pageTop + rect.height;
-    const viewTop = window.scrollY;
+    const viewTop = window.scrollY || window.pageYOffset || 0;
     const viewBottom = viewTop + window.innerHeight;
     const maxVisible = window.innerHeight - headerHeight - padding * 2;
 
-    // Tall expanded panel: pin its header under the site nav
     if (rect.height >= maxVisible) {
       return Math.max(0, pageTop - headerHeight - padding);
     }
-
-    // Bottom clipped: scroll just enough to reveal it
     if (pageBottom > viewBottom - padding) {
       return Math.max(0, pageBottom - window.innerHeight + padding);
     }
-
-    // Top under fixed header
     if (rect.top < headerHeight + padding) {
       return Math.max(0, pageTop - headerHeight - padding);
     }
-
-    return window.scrollY;
+    return viewTop;
   }
 
   function animateTo(target) {
-    const startY = window.scrollY;
+    const startY = window.scrollY || window.pageYOffset || 0;
     if (Math.abs(target - startY) < 2) return;
 
     const startTime = performance.now();
@@ -141,10 +173,7 @@ function scrollToFitExpandedItem(item) {
 
     function tick(now) {
       const progress = Math.min((now - startTime) / duration, 1);
-      window.scrollTo({
-        top: startY + (target - startY) * easeOutQuart(progress),
-        behavior: "auto",
-      });
+      setNativeScrollTop(startY + (target - startY) * easeOutQuart(progress));
       if (progress < 1) {
         rafId = requestAnimationFrame(tick);
       }
@@ -156,49 +185,45 @@ function scrollToFitExpandedItem(item) {
   function settle() {
     if (finished) return;
     finished = true;
-    body?.removeEventListener("transitionend", onTransitionEnd);
-    // Remeasure after expand is fully open, then scroll
-    animateTo(getTargetScroll());
-  }
-
-  function onTransitionEnd(e) {
-    if (e.target !== body) return;
-    if (e.propertyName && e.propertyName !== "grid-template-rows") return;
-    settle();
-  }
-
-  body?.addEventListener("transitionend", onTransitionEnd);
-
-  // Kick a follow-scroll while the panel is opening (height grows over ~350ms)
-  const chaseStart = performance.now();
-  const chaseDuration = 420;
-
-  function chase(now) {
-    if (finished) return;
-    const liveTarget = getTargetScroll();
-    const current = window.scrollY;
-    if (Math.abs(liveTarget - current) > 2) {
-      window.scrollTo({
-        top: current + (liveTarget - current) * 0.35,
-        behavior: "auto",
-      });
-    }
-    if (now - chaseStart < chaseDuration) {
-      rafId = requestAnimationFrame(chase);
-    } else {
-      settle();
-    }
-  }
-
-  // Wait 2 frames so `.expanded` layout has applied before chasing
-  requestAnimationFrame(() => {
+    cancelAnimationFrame(rafId);
+    // Final measure after expand + images
     requestAnimationFrame(() => {
-      rafId = requestAnimationFrame(chase);
+      animateTo(getTargetScroll());
     });
+  }
+
+  function chaseWhileOpening(ms) {
+    const chaseStart = performance.now();
+
+    function chase(now) {
+      if (finished) return;
+      const liveTarget = getTargetScroll();
+      const current = window.scrollY || window.pageYOffset || 0;
+      if (Math.abs(liveTarget - current) > 2) {
+        setNativeScrollTop(current + (liveTarget - current) * 0.4);
+      }
+      if (now - chaseStart < ms) {
+        rafId = requestAnimationFrame(chase);
+      }
+    }
+
+    rafId = requestAnimationFrame(chase);
+  }
+
+  // Eagerly load images inside this item (lazy images break height on first open in production)
+  item.querySelectorAll("img[loading='lazy']").forEach((img) => {
+    img.loading = "eager";
   });
 
-  // Safety net if transitionend never fires
-  window.setTimeout(settle, 500);
+  chaseWhileOpening(450);
+
+  waitForItemImages(item).then(() => {
+    // Give CSS grid expand a moment, then settle
+    window.setTimeout(settle, isMobile ? 380 : 320);
+  });
+
+  // Absolute fallback
+  window.setTimeout(settle, 900);
 }
 
 function bindAccordionEvents(container) {
@@ -249,7 +274,7 @@ function initMachineAccordion(type) {
         <div class="machine-body-inner">
           <div class="machine-detail">
             <div class="machine-image">
-              <img src="${m.image}" alt="${m.name}" loading="lazy" />
+              <img src="${m.image}" alt="${m.name}" loading="eager" decoding="async" />
             </div>
             <div class="machine-text">
               <p>${m.description}</p>

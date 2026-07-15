@@ -485,6 +485,11 @@ body.inner-page .logo-word {
   color: var(--brand-orange);
 }
 
+html:has(body.classes-page),
+body.classes-page {
+  scroll-behavior: auto;
+}
+
 .page-main {
   padding-top: var(--header-height);
   min-height: calc(100vh - var(--header-height));
