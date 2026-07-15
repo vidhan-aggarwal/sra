@@ -15,7 +15,18 @@ function renderNav() {
         <img src="assets/brand/logo-mark-128.png" alt="" class="logo-mark" width="36" height="36" />
         <span class="logo-word">SRA</span>
       </a>
-      <ul class="nav-links">
+      <button
+        type="button"
+        class="nav-toggle"
+        aria-label="Open menu"
+        aria-expanded="false"
+        aria-controls="primary-nav"
+      >
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+        <span class="nav-toggle-bar" aria-hidden="true"></span>
+      </button>
+      <ul class="nav-links" id="primary-nav">
         <li>
           <a href="index.html" class="nav-link${current === "home" ? " active" : ""}" data-nav="home">Home</a>
         </li>
@@ -95,6 +106,7 @@ function initHeaderScroll() {
   }
 
   const onScroll = () => {
+    if (document.body.classList.contains("nav-open")) return;
     const heroTop = intro ? intro.offsetHeight : 0;
     const threshold = heroTop + hero.offsetHeight * 0.15;
     header.classList.toggle("scrolled", window.scrollY > threshold);
@@ -124,11 +136,55 @@ function initNavDropdown() {
   dropdown.addEventListener("click", (e) => e.stopPropagation());
 }
 
+function initMobileNav() {
+  const header = document.getElementById("site-header");
+  const toggle = document.querySelector(".nav-toggle");
+  const links = document.querySelector(".nav-links");
+  if (!header || !toggle || !links) return;
+
+  function setOpen(open) {
+    document.body.classList.toggle("nav-open", open);
+    header.classList.toggle("nav-open", open);
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+
+    if (open) {
+      header.classList.add("scrolled");
+    } else if (!document.body.classList.contains("inner-page")) {
+      const hero = document.querySelector(".hero");
+      const intro = document.querySelector(".intro-track");
+      if (hero) {
+        const heroTop = intro ? intro.offsetHeight : 0;
+        const threshold = heroTop + hero.offsetHeight * 0.15;
+        header.classList.toggle("scrolled", window.scrollY > threshold);
+      }
+    }
+  }
+
+  toggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setOpen(!document.body.classList.contains("nav-open"));
+  });
+
+  links.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => setOpen(false));
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") setOpen(false);
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 900) setOpen(false);
+  });
+}
+
 function initSiteChrome() {
   renderNav();
   renderFooter();
   initHeaderScroll();
   initNavDropdown();
+  initMobileNav();
 }
 
 document.addEventListener("DOMContentLoaded", initSiteChrome);
