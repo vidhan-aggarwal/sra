@@ -96,43 +96,109 @@ function easeOutQuart(t) {
 }
 
 function scrollToFitExpandedItem(item) {
-  const headerHeight = document.getElementById("site-header")?.offsetHeight || 64;
-  const padding = 24;
-  const startY = window.scrollY;
-  const startTime = performance.now();
-  const duration = window.matchMedia("(max-width: 900px)").matches ? 280 : 360;
+  const headerEl = document.getElementById("site-header");
+  const headerHeight = headerEl?.offsetHeight || 64;
+  const padding = 20;
+  const isMobile = window.matchMedia("(max-width: 900px)").matches;
+  const duration = isMobile ? 300 : 380;
+  const body = item.querySelector(".machine-body");
+
+  let rafId = 0;
+  let finished = false;
 
   function getTargetScroll() {
     const rect = item.getBoundingClientRect();
-    const itemTop = window.scrollY + rect.top;
-    const itemBottom = itemTop + rect.height;
+    const pageTop = window.scrollY + rect.top;
+    const pageBottom = pageTop + rect.height;
+    const viewTop = window.scrollY;
+    const viewBottom = viewTop + window.innerHeight;
     const maxVisible = window.innerHeight - headerHeight - padding * 2;
 
+    // Tall expanded panel: pin its header under the site nav
     if (rect.height >= maxVisible) {
-      return Math.max(0, itemTop - headerHeight - padding);
+      return Math.max(0, pageTop - headerHeight - padding);
     }
-    if (itemBottom > window.scrollY + window.innerHeight - padding) {
-      return Math.max(0, itemBottom - window.innerHeight + padding);
+
+    // Bottom clipped: scroll just enough to reveal it
+    if (pageBottom > viewBottom - padding) {
+      return Math.max(0, pageBottom - window.innerHeight + padding);
     }
+
+    // Top under fixed header
     if (rect.top < headerHeight + padding) {
-      return Math.max(0, itemTop - headerHeight - padding);
+      return Math.max(0, pageTop - headerHeight - padding);
     }
+
     return window.scrollY;
   }
 
-  // Wait one frame so the expanded panel height is available
-  requestAnimationFrame(() => {
-    const target = getTargetScroll();
+  function animateTo(target) {
+    const startY = window.scrollY;
     if (Math.abs(target - startY) < 2) return;
+
+    const startTime = performance.now();
+    cancelAnimationFrame(rafId);
 
     function tick(now) {
       const progress = Math.min((now - startTime) / duration, 1);
-      window.scrollTo(0, startY + (target - startY) * easeOutQuart(progress));
-      if (progress < 1) requestAnimationFrame(tick);
+      window.scrollTo({
+        top: startY + (target - startY) * easeOutQuart(progress),
+        behavior: "auto",
+      });
+      if (progress < 1) {
+        rafId = requestAnimationFrame(tick);
+      }
     }
 
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function settle() {
+    if (finished) return;
+    finished = true;
+    body?.removeEventListener("transitionend", onTransitionEnd);
+    // Remeasure after expand is fully open, then scroll
+    animateTo(getTargetScroll());
+  }
+
+  function onTransitionEnd(e) {
+    if (e.target !== body) return;
+    if (e.propertyName && e.propertyName !== "grid-template-rows") return;
+    settle();
+  }
+
+  body?.addEventListener("transitionend", onTransitionEnd);
+
+  // Kick a follow-scroll while the panel is opening (height grows over ~350ms)
+  const chaseStart = performance.now();
+  const chaseDuration = 420;
+
+  function chase(now) {
+    if (finished) return;
+    const liveTarget = getTargetScroll();
+    const current = window.scrollY;
+    if (Math.abs(liveTarget - current) > 2) {
+      window.scrollTo({
+        top: current + (liveTarget - current) * 0.35,
+        behavior: "auto",
+      });
+    }
+    if (now - chaseStart < chaseDuration) {
+      rafId = requestAnimationFrame(chase);
+    } else {
+      settle();
+    }
+  }
+
+  // Wait 2 frames so `.expanded` layout has applied before chasing
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(chase);
+    });
   });
+
+  // Safety net if transitionend never fires
+  window.setTimeout(settle, 500);
 }
 
 function bindAccordionEvents(container) {
