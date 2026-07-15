@@ -166,6 +166,9 @@ function initMobileNav() {
     setOpen(!document.body.classList.contains("nav-open"));
   });
 
+  // Prevent document click handler from closing Classes on first tap inside the drawer
+  links.addEventListener("click", (e) => e.stopPropagation());
+
   links.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => setOpen(false));
   });
