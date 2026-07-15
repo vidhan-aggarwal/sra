@@ -59,7 +59,7 @@ a {
 /* ─── Intro Splash ─── */
 .intro-track {
   position: relative;
-  height: 170vh;
+  height: 180vh;
   background: #000000;
 }
 
@@ -87,7 +87,6 @@ a {
   justify-content: center;
   transform-origin: 50% 40%;
   will-change: transform, opacity;
-  contain: layout paint;
 }
 
 .intro-splash-inner {
@@ -97,10 +96,10 @@ a {
   width: 100%;
   height: 100%;
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(10px);
   transition:
-    opacity 1s var(--ease-out),
-    transform 1s var(--ease-out);
+    opacity 0.9s var(--ease-out),
+    transform 0.9s var(--ease-out);
 }
 
 .intro-splash.is-ready .intro-splash-inner {
@@ -110,13 +109,13 @@ a {
 
 .intro-logo {
   display: block;
-  width: min(52vw, 260px);
+  width: min(48vw, 240px);
   height: auto;
-  max-height: min(72vh, 520px);
+  max-height: min(70vh, 480px);
   object-fit: contain;
-  background: #000000;
+  background: transparent;
   transform-origin: 50% 40%;
-  transform: translateZ(0) scale(1);
+  transform: translateZ(0);
   opacity: 1;
   will-change: transform, opacity;
   backface-visibility: hidden;
@@ -139,9 +138,9 @@ a {
   color: var(--sra-grey);
   opacity: 0;
   pointer-events: auto;
-  transition: color 0.3s;
+  transition: opacity 0.8s var(--ease-out) 0.35s, color 0.3s;
   will-change: opacity;
-  z-index: 2;
+  z-index: 5;
 }
 
 .intro-splash.is-ready .intro-scroll-cue {
@@ -220,7 +219,6 @@ body.has-intro #home {
   z-index: 1;
   margin-top: -100vh;
   transform-origin: center center;
-  will-change: transform;
 }
 
 /* ─── Header ─── */
@@ -974,6 +972,15 @@ body.testimonials-page {
   overscroll-behavior-y: none;
 }
 
+body.testimonials-page,
+body.testimonials-page html {
+  scroll-behavior: auto;
+}
+
+html:has(body.testimonials-page) {
+  scroll-behavior: auto;
+}
+
 body.testimonials-page .site-footer {
   display: none;
 }
@@ -1000,6 +1007,26 @@ body.testimonials-page .page-main {
   overflow: hidden;
 }
 
+.testimonials-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.testimonials-panel.is-native-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+
+.testimonials-panel.is-native-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .testimonials-section .section-heading {
   text-align: center;
   margin-bottom: 1.5rem;
@@ -1007,13 +1034,6 @@ body.testimonials-page .page-main {
   flex-shrink: 0;
   opacity: 1;
   transform: none;
-}
-
-.testimonials-panel {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  width: 100%;
 }
 
 .testimonial-track {
@@ -1024,6 +1044,8 @@ body.testimonials-page .page-main {
   width: max-content;
   padding: 0 2rem;
   will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 
 .testimonial-card {
@@ -1501,12 +1523,12 @@ body.testimonials-page .page-main {
 
 @media (max-width: 768px) {
   .intro-track {
-    height: 160vh;
+    height: 165vh;
   }
 
   .intro-logo {
-    width: min(62vw, 220px);
-    max-height: min(68vh, 420px);
+    width: min(56vw, 220px);
+    max-height: min(62vh, 400px);
   }
 
   .btn-explore {
@@ -1523,22 +1545,38 @@ body.testimonials-page .page-main {
     padding: 1.35rem 1.25rem 1.5rem;
   }
 
-  .testimonials-panel {
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+  .testimonials-sticky {
+    height: 100svh;
+    overflow: visible;
+    padding-top: calc(var(--header-height) + 1rem);
   }
 
-  .testimonials-panel::-webkit-scrollbar {
+  .testimonials-panel,
+  .testimonials-panel.is-native-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+
+  .testimonials-panel::-webkit-scrollbar,
+  .testimonials-panel.is-native-scroll::-webkit-scrollbar {
     display: none;
   }
 
-  .testimonial-card {
-    width: calc(100vw - 3.5rem);
+  .testimonial-track {
+    will-change: auto;
+    height: 100%;
+    min-height: 55vh;
+    padding: 0 1.25rem 0.5rem;
+    gap: 1rem;
   }
 
-  .testimonials-sticky {
-    padding-top: calc(var(--header-height) + 1rem);
+  .testimonial-card {
+    width: min(82vw, 340px);
+    height: auto;
+    min-height: 55vh;
   }
 
   .testimonials-section .section-heading {
@@ -1570,8 +1608,8 @@ body.testimonials-page .page-main {
   }
 
   .intro-logo {
-    width: min(62vw, 200px);
-    max-height: min(58vh, 380px);
+    width: min(58vw, 200px);
+    max-height: min(56vh, 360px);
   }
 
   .intro-scroll-cue {
@@ -1645,7 +1683,8 @@ body.testimonials-page .page-main {
   }
 
   .testimonial-card {
-    width: calc(100vw - 2.5rem);
+    width: min(84vw, 320px);
+    min-height: 52vh;
   }
 
   .testimonial-card-body {

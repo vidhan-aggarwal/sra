@@ -16,11 +16,28 @@ function initIntroSplash() {
   if (!track || !intro || !logo || !home) return;
 
   document.body.classList.add("has-intro");
-  requestAnimationFrame(() => intro.classList.add("is-ready"));
+  document.body.classList.remove("intro-passed");
+
+  // Clean default state before any scroll drives animation
+  intro.style.opacity = "1";
+  intro.style.visibility = "visible";
+  logo.style.transform = "translate3d(0,0,0) scale(1)";
+  logo.style.opacity = "1";
+  if (stage) {
+    stage.style.transform = "translate3d(0,0,0) scale(1)";
+    stage.style.opacity = "1";
+  }
+  home.style.transform = "";
+
+  // Let CSS control the cue fade-in; don't lock it to opacity 0 via inline styles
+  if (cue) {
+    cue.style.opacity = "";
+    cue.style.pointerEvents = "auto";
+  }
 
   const LOGO_START_SCALE = 1;
-  const LOGO_END_SCALE = 1.75;
-  const STAGE_END_SCALE = 4.2;
+  const LOGO_END_SCALE = 1.8;
+  const STAGE_END_SCALE = 4.5;
 
   const clamp = (v, min = 0, max = 1) => Math.min(max, Math.max(min, v));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -49,39 +66,46 @@ function initIntroSplash() {
     if (Math.abs(progress - lastApplied) < 0.0008) return;
     lastApplied = progress;
 
-    // Zoom starts immediately with scroll; fade comes later
-    const zoomT = easeOutCubic(smoothstep(0, 0.85, progress));
-    const fadeT = smoothstep(0.52, 0.78, progress);
-    const revealT = smoothstep(0.68, 0.96, progress);
-    const cueT = 1 - smoothstep(0, 0.08, progress);
-    const stageZoom = easeInOutCubic(smoothstep(0.32, 0.95, progress));
+    // Instant zoom with scroll; fade starts later
+    const zoomT = easeOutCubic(smoothstep(0, 0.8, progress));
+    const fadeT = smoothstep(0.5, 0.78, progress);
+    const revealT = smoothstep(0.66, 0.96, progress);
+    const cueT = 1 - smoothstep(0, 0.1, progress);
+    const stageZoom = easeInOutCubic(smoothstep(0.3, 0.95, progress));
+    const heroZoom = smoothstep(0.55, 0.96, progress);
 
     const logoScale = lerp(LOGO_START_SCALE, LOGO_END_SCALE, zoomT);
     const logoOpacity = 1 - fadeT;
     const splashOpacity = 1 - revealT;
     const stageScale = lerp(1, STAGE_END_SCALE, stageZoom);
-    const heroScale = lerp(1.12, 1, easeOutCubic(revealT));
+    const heroScale = lerp(1.1, 1, easeOutCubic(heroZoom));
 
     logo.style.transform = `translate3d(0,0,0) scale(${logoScale})`;
     logo.style.opacity = String(logoOpacity);
 
     if (stage) {
       stage.style.transform = `translate3d(0,0,0) scale(${stageScale})`;
-      stage.style.opacity = String(1 - revealT);
+      stage.style.opacity = String(1 - revealT * 0.85);
     }
 
-    intro.style.opacity = String(splashOpacity);
+    intro.style.opacity = String(Math.max(splashOpacity, 0.001));
 
-    if (progress < 0.97) {
+    // Only scale hero once the reveal begins — keeps default view clean
+    if (heroZoom > 0.01 && progress < 0.98) {
       home.style.transform = `translate3d(0,0,0) scale(${heroScale})`;
-    } else if (home.style.transform) {
+    } else {
       home.style.transform = "";
     }
 
     if (cue) {
-      const readyBoost = intro.classList.contains("is-ready") ? 1 : 0;
-      cue.style.opacity = String(cueT * readyBoost);
-      cue.style.pointerEvents = cueT > 0.25 ? "auto" : "none";
+      if (progress <= 0.001) {
+        // Default view: clear inline so CSS `.is-ready` fade-in shows the cue
+        cue.style.opacity = "";
+        cue.style.pointerEvents = "auto";
+      } else {
+        cue.style.opacity = String(cueT);
+        cue.style.pointerEvents = cueT > 0.2 ? "auto" : "none";
+      }
     }
 
     const nowPassed = progress >= 0.9;
@@ -92,6 +116,8 @@ function initIntroSplash() {
         home.style.transform = "";
         intro.style.opacity = "0";
         logo.style.opacity = "0";
+      } else {
+        intro.style.visibility = "visible";
       }
     }
   }
@@ -101,7 +127,7 @@ function initIntroSplash() {
     rafId = requestAnimationFrame(() => applyProgress(getProgress()));
   }
 
-  function scrollThroughIntro(duration = 1600) {
+  function scrollThroughIntro(duration = 1400) {
     const startY = window.scrollY;
     const targetY = scrollable;
     const distance = targetY - startY;
@@ -120,10 +146,17 @@ function initIntroSplash() {
 
   cue?.addEventListener("click", (e) => {
     e.preventDefault();
-    scrollThroughIntro(1600);
+    scrollThroughIntro(1400);
   });
 
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+
   measure();
+  window.scrollTo(0, 0);
+  applyProgress(0);
+
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener(
     "resize",
@@ -134,11 +167,12 @@ function initIntroSplash() {
     { passive: true }
   );
 
-  if ("scrollRestoration" in history) {
-    history.scrollRestoration = "manual";
-  }
-  window.scrollTo(0, 0);
-  applyProgress(0);
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+    intro.classList.add("is-ready");
+    lastApplied = -1;
+    applyProgress(0);
+  });
 }
 
 function initHero() {

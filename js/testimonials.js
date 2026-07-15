@@ -79,7 +79,6 @@ function renderTestimonialCards() {
 }
 
 let currentIndex = 0;
-let testimonialsLenis = null;
 
 function openExpanded(index) {
   currentIndex = index;
@@ -89,14 +88,12 @@ function openExpanded(index) {
   updateExpandedContent();
   overlay.classList.add("open");
   overlay.setAttribute("aria-hidden", "false");
-  testimonialsLenis?.stop();
 }
 
 function closeExpanded() {
   const overlay = document.getElementById("testimonial-expanded");
   overlay?.classList.remove("open");
   overlay?.setAttribute("aria-hidden", "true");
-  testimonialsLenis?.start();
 }
 
 function updateExpandedContent() {
@@ -128,20 +125,10 @@ function initTestimonialHorizontalScroll() {
 
   if (!section || !sticky || !panel || !track || typeof gsap === "undefined") return;
 
+  // Native scroll only — no Lenis easing lag
+  document.documentElement.style.scrollBehavior = "auto";
+
   gsap.registerPlugin(ScrollTrigger);
-
-  testimonialsLenis = new Lenis({
-    duration: 1.2,
-    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-    smoothWheel: true,
-  });
-
-  testimonialsLenis.on("scroll", ScrollTrigger.update);
-
-  gsap.ticker.add((time) => {
-    testimonialsLenis.raf(time * 1000);
-  });
-  gsap.ticker.lagSmoothing(0);
 
   const mm = gsap.matchMedia();
 
@@ -149,9 +136,11 @@ function initTestimonialHorizontalScroll() {
     const getScrollDistance = () =>
       Math.max(track.scrollWidth - panel.clientWidth, 0);
 
+    // scrub: true = 1:1 with trackpad/wheel, no smoothing delay
     const tween = gsap.to(track, {
       x: () => -getScrollDistance(),
       ease: "none",
+      force3D: true,
       scrollTrigger: {
         trigger: section,
         start: "top top",
@@ -160,28 +149,50 @@ function initTestimonialHorizontalScroll() {
         scrub: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
+        fastScrollEnd: true,
       },
     });
 
     return () => {
       tween.scrollTrigger?.kill();
       tween.kill();
-      gsap.set(track, { x: 0 });
+      gsap.set(track, { clearProps: "transform" });
     };
   });
 
   mm.add("(max-width: 768px)", () => {
-    panel.style.overflowX = "auto";
-    panel.style.webkitOverflowScrolling = "touch";
-    gsap.set(track, { x: 0 });
+    panel.classList.add("is-native-scroll");
+    gsap.set(track, { clearProps: "transform,x" });
+    sticky.style.overflow = "visible";
+
+    // Native horizontal swipe/drag — map vertical wheel to horizontal while over panel
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      if (panel.scrollWidth <= panel.clientWidth + 2) return;
+
+      const atStart = panel.scrollLeft <= 0 && e.deltaY < 0;
+      const atEnd =
+        panel.scrollLeft + panel.clientWidth >= panel.scrollWidth - 2 && e.deltaY > 0;
+      if (atStart || atEnd) return;
+
+      e.preventDefault();
+      panel.scrollLeft += e.deltaY;
+    };
+
+    panel.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
-      panel.style.overflowX = "";
-      panel.style.webkitOverflowScrolling = "";
+      panel.classList.remove("is-native-scroll");
+      sticky.style.overflow = "";
+      panel.removeEventListener("wheel", onWheel);
     };
   });
 
-  window.addEventListener("resize", () => ScrollTrigger.refresh());
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => ScrollTrigger.refresh(), 120);
+  });
 
   requestAnimationFrame(() => ScrollTrigger.refresh());
 }
