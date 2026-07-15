@@ -36,6 +36,7 @@
 
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
@@ -44,6 +45,8 @@ body {
   color: var(--dark-brown);
   line-height: 1.6;
   overflow-x: hidden;
+  min-height: 100%;
+  min-height: 100dvh;
 }
 
 img {
@@ -67,8 +70,12 @@ a {
   position: sticky;
   top: 0;
   z-index: 120;
-  height: 100svh;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -76,6 +83,17 @@ a {
   color: var(--sra-orange);
   overflow: hidden;
   pointer-events: none;
+}
+
+/* Full-screen black so mobile browser chrome never reveals the hero underneath */
+body.has-intro:not(.intro-passed)::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 115;
+  background: #000000;
+  pointer-events: none;
+  opacity: var(--intro-veil, 1);
 }
 
 .intro-splash-stage {
@@ -124,7 +142,7 @@ a {
 
 .intro-scroll-cue {
   position: absolute;
-  bottom: 2.25rem;
+  bottom: max(2.25rem, calc(1.25rem + env(safe-area-inset-bottom, 0px)));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -218,6 +236,7 @@ body.has-intro #home {
   position: relative;
   z-index: 1;
   margin-top: -100vh;
+  margin-top: -100dvh;
   transform-origin: center center;
 }
 
@@ -1524,6 +1543,14 @@ body.testimonials-page .page-main {
 @media (max-width: 768px) {
   .intro-track {
     height: 165vh;
+  }
+
+  .intro-splash {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
   }
 
   .intro-logo {

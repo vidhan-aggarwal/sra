@@ -18,9 +18,21 @@ function initIntroSplash() {
   document.body.classList.add("has-intro");
   document.body.classList.remove("intro-passed");
 
+  // Lock accurate mobile viewport height (avoids 100vh gaps under browser chrome)
+  function setViewportUnit() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty("--app-vh", `${vh}px`);
+  }
+  setViewportUnit();
+  window.addEventListener("resize", setViewportUnit, { passive: true });
+  window.addEventListener("orientationchange", setViewportUnit, { passive: true });
+
   // Clean default state before any scroll drives animation
   intro.style.opacity = "1";
   intro.style.visibility = "visible";
+  intro.style.height = "calc(var(--app-vh, 1vh) * 100)";
+  intro.style.minHeight = "calc(var(--app-vh, 1vh) * 100)";
+  document.body.style.setProperty("--intro-veil", "1");
   logo.style.transform = "translate3d(0,0,0) scale(1)";
   logo.style.opacity = "1";
   if (stage) {
@@ -28,6 +40,7 @@ function initIntroSplash() {
     stage.style.opacity = "1";
   }
   home.style.transform = "";
+  home.style.marginTop = "calc(var(--app-vh, 1vh) * -100)";
 
   // Let CSS control the cue fade-in; don't lock it to opacity 0 via inline styles
   if (cue) {
@@ -89,6 +102,7 @@ function initIntroSplash() {
     }
 
     intro.style.opacity = String(Math.max(splashOpacity, 0.001));
+    document.body.style.setProperty("--intro-veil", String(splashOpacity));
 
     // Only scale hero once the reveal begins — keeps default view clean
     if (heroZoom > 0.01 && progress < 0.98) {
