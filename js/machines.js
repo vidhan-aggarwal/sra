@@ -98,8 +98,9 @@ function easeOutQuart(t) {
 function scrollToFitExpandedItem(item) {
   const headerHeight = document.getElementById("site-header")?.offsetHeight || 64;
   const padding = 24;
+  const startY = window.scrollY;
   const startTime = performance.now();
-  const duration = 700;
+  const duration = window.matchMedia("(max-width: 900px)").matches ? 280 : 360;
 
   function getTargetScroll() {
     const rect = item.getBoundingClientRect();
@@ -119,22 +120,19 @@ function scrollToFitExpandedItem(item) {
     return window.scrollY;
   }
 
-  function tick(now) {
-    const elapsed = now - startTime;
-    const progress = Math.min(elapsed / duration, 1);
+  // Wait one frame so the expanded panel height is available
+  requestAnimationFrame(() => {
     const target = getTargetScroll();
-    const current = window.scrollY;
-    const step = 0.12 + easeOutQuart(progress) * 0.28;
-    const next = current + (target - current) * step;
+    if (Math.abs(target - startY) < 2) return;
 
-    window.scrollTo(0, next);
-
-    if (progress < 1 || Math.abs(target - next) > 1) {
-      requestAnimationFrame(tick);
+    function tick(now) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      window.scrollTo(0, startY + (target - startY) * easeOutQuart(progress));
+      if (progress < 1) requestAnimationFrame(tick);
     }
-  }
 
-  requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
+  });
 }
 
 function bindAccordionEvents(container) {

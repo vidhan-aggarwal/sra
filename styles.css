@@ -59,7 +59,7 @@ a {
 /* ─── Intro Splash ─── */
 .intro-track {
   position: relative;
-  height: 240vh;
+  height: 170vh;
   background: #000000;
 }
 
@@ -867,7 +867,7 @@ body.inner-page .logo-word {
 
 .machine-chevron {
   flex-shrink: 0;
-  transition: transform var(--transition-slow);
+  transition: transform 0.35s var(--ease-out);
   opacity: 0.6;
 }
 
@@ -878,7 +878,7 @@ body.inner-page .logo-word {
 .machine-body {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--transition-slow);
+  transition: grid-template-rows 0.35s var(--ease-out);
 }
 
 .machine-item.expanded .machine-body {
@@ -890,8 +890,8 @@ body.inner-page .logo-word {
   opacity: 0;
   transform: translateY(-6px);
   transition:
-    opacity var(--transition-slow),
-    transform var(--transition-slow);
+    opacity 0.3s var(--ease-out),
+    transform 0.3s var(--ease-out);
 }
 
 .machine-item.expanded .machine-body-inner {
@@ -1501,7 +1501,7 @@ body.testimonials-page .page-main {
 
 @media (max-width: 768px) {
   .intro-track {
-    height: 220vh;
+    height: 160vh;
   }
 
   .intro-logo {

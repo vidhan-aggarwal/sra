@@ -21,8 +21,6 @@ function initIntroSplash() {
   const LOGO_START_SCALE = 1;
   const LOGO_END_SCALE = 1.75;
   const STAGE_END_SCALE = 4.2;
-  const isCoarse = window.matchMedia("(pointer: coarse)").matches;
-  const SMOOTHING = isCoarse ? 0.22 : 0.16;
 
   const clamp = (v, min = 0, max = 1) => Math.min(max, Math.max(min, v));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -34,11 +32,9 @@ function initIntroSplash() {
     return t * t * (3 - 2 * t);
   };
 
-  let targetProgress = 0;
-  let smoothProgress = 0;
   let lastApplied = -1;
   let passed = false;
-  let ticking = false;
+  let rafId = 0;
   let scrollable = 1;
 
   function measure() {
@@ -50,14 +46,15 @@ function initIntroSplash() {
   }
 
   function applyProgress(progress) {
-    if (Math.abs(progress - lastApplied) < 0.0015) return;
+    if (Math.abs(progress - lastApplied) < 0.0008) return;
     lastApplied = progress;
 
-    const zoomT = easeOutCubic(smoothstep(0, 0.72, progress));
-    const fadeT = smoothstep(0.48, 0.78, progress);
-    const revealT = smoothstep(0.62, 0.96, progress);
-    const cueT = 1 - smoothstep(0, 0.1, progress);
-    const stageZoom = easeInOutCubic(smoothstep(0.35, 0.95, progress));
+    // Zoom starts immediately with scroll; fade comes later
+    const zoomT = easeOutCubic(smoothstep(0, 0.85, progress));
+    const fadeT = smoothstep(0.52, 0.78, progress);
+    const revealT = smoothstep(0.68, 0.96, progress);
+    const cueT = 1 - smoothstep(0, 0.08, progress);
+    const stageZoom = easeInOutCubic(smoothstep(0.32, 0.95, progress));
 
     const logoScale = lerp(LOGO_START_SCALE, LOGO_END_SCALE, zoomT);
     const logoOpacity = 1 - fadeT;
@@ -65,7 +62,6 @@ function initIntroSplash() {
     const stageScale = lerp(1, STAGE_END_SCALE, stageZoom);
     const heroScale = lerp(1.12, 1, easeOutCubic(revealT));
 
-    // Transform/opacity only — no filters (filters cause scroll jank)
     logo.style.transform = `translate3d(0,0,0) scale(${logoScale})`;
     logo.style.opacity = String(logoOpacity);
 
@@ -100,31 +96,12 @@ function initIntroSplash() {
     }
   }
 
-  function tick() {
-    ticking = true;
-    targetProgress = getProgress();
-    smoothProgress += (targetProgress - smoothProgress) * SMOOTHING;
-
-    if (Math.abs(targetProgress - smoothProgress) < 0.0008) {
-      smoothProgress = targetProgress;
-    }
-
-    applyProgress(smoothProgress);
-
-    // Keep easing until we settle on the target
-    if (Math.abs(targetProgress - smoothProgress) > 0.0008) {
-      requestAnimationFrame(tick);
-    } else {
-      ticking = false;
-    }
-  }
-
   function onScroll() {
-    if (!ticking) requestAnimationFrame(tick);
-    else targetProgress = getProgress();
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => applyProgress(getProgress()));
   }
 
-  function slowScrollThroughIntro(duration = 2800) {
+  function scrollThroughIntro(duration = 1600) {
     const startY = window.scrollY;
     const targetY = scrollable;
     const distance = targetY - startY;
@@ -143,7 +120,7 @@ function initIntroSplash() {
 
   cue?.addEventListener("click", (e) => {
     e.preventDefault();
-    slowScrollThroughIntro(isCoarse ? 2400 : 3000);
+    scrollThroughIntro(1600);
   });
 
   measure();
